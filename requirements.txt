@@ -1,0 +1,30 @@
+# 数模 C 题 · 边坡预警 —— Python 依赖
+# 用法: uv pip install -r requirements.txt  (或 pip install -r requirements.txt)
+
+# ---- 数据处理 ----
+numpy>=1.26
+pandas>=2.2
+openpyxl>=3.1            # 读取竞赛 xlsx 附件
+
+# ---- 信号处理 / 时序 ----
+scipy>=1.13              # savgol_filter, 统计检验
+PyWavelets>=1.7          # 小波去噪
+pykalman>=0.9.5          # Kalman 滤波 (数据校正/去噪)
+ruptures>=1.1            # 变点检测 (PELT/BinSeg/CUSUM, 三段式阶段识别)
+
+# ---- 机器学习 ----
+scikit-learn>=1.5        # 异常检测/插补/特征选择/随机森林
+xgboost>=2.0             # 位移回归预测
+lightgbm>=4.3            # 位移回归预测
+shap>=0.45               # 特征贡献归因解释
+
+# ---- 深度学习 (可选, 时序预测) ----
+# tensorflow>=2.16        # LSTM/GRU, 按需启用
+
+# ---- 可视化 ----
+matplotlib>=3.8
+seaborn>=0.13
+
+# ---- 工具 ----
+tqdm>=4.66
+joblib>=1.4
