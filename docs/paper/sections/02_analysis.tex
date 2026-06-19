@@ -1,11 +1,47 @@
 % 02_analysis.tex —— 问题分析
 \section{问题分析}
-% 标题要点名「具体问题」，不要写「问题X的分析」这种空泛标题；与 05_model 各问命名保持一致。
-\subsection{问题一的分析：单班组单车间——工序链与关键路径}
-% TODO
-\subsection{问题二的分析：单班组多车间——设备选择与跨车间运输}
-% TODO
-\subsection{问题三的分析：双班组多车间——并行瓶颈与设备换型}
-% TODO
-\subsection{问题四的分析：预算约束——关键设备购置与工期权衡}
-% TODO
+
+\subsection{工序展开与设备子任务拆分}
+
+题目中每个车间的整修任务均构成一条工序链。例如 A 车间必须按 A1、A2、A3 顺序执行；D 车间必须按 D1 至 D6 顺序执行。C 车间较为特殊，除 C1、C2 外，C3、C4、C5 需要重复执行三轮，因此展开后 C 车间工序链为
+\begin{align*}
+\text{C1}&\rightarrow \text{C2}
+\rightarrow(\text{C3\_R1}\rightarrow \text{C4\_R1}\rightarrow \text{C5\_R1})\\
+&\rightarrow(\text{C3\_R2}\rightarrow \text{C4\_R2}\rightarrow \text{C5\_R2})\\
+&\rightarrow(\text{C3\_R3}\rightarrow \text{C4\_R3}\rightarrow \text{C5\_R3}) .
+\end{align*}
+展开后，五个车间共形成 27 个工序实例。由于部分工序需要两类设备，各工序进一步拆分为 41 个设备子任务。设备子任务是模型中进行设备分配和互斥约束的基本单位。
+
+\subsection{资源瓶颈与关键路径}
+
+班组配置中，自动化输送臂、工业清洗机、精密灌装机数量较多，而高速抛光机和自动传感多功能机每个班组仅各 1 台。对于单班组场景，后两类设备天然成为瓶颈资源。问题二的最优性证明也正是围绕这两台单机瓶颈展开。
+
+当两个班组共同参与后，设备数量翻倍，单台设备瓶颈有所缓解。此时 C 车间的固定工序链成为不可压缩的关键路径。由于车间内部工序必须严格顺序执行，新增设备只能改善不同车间或不同工序之间的并行能力，无法缩短 C 车间链上每一道工序的固有作业时长。因此，问题三和问题四的最短完工时间均由 C 车间关键链决定。
+
+\subsection{四问递进关系}
+
+四个问题的约束范围逐步扩大。问题一是单车间链式调度，可直接由工序链下界判断最优；问题二增加五车间并行和跨车间运输，核心矛盾变为单班组瓶颈设备排序；问题三增加第二班组，资源扩容后关键瓶颈从单机排序转为 C 车间不可压缩链；问题四进一步增加采购决策，但由于问题三已经达到 C 链下界，预算不再影响最优工期。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{四个问题最短时长汇总}
+  \label{tab:summary}
+  \renewcommand{\arraystretch}{1.25}
+  \begin{tabularx}{\textwidth}{c X r c X}
+    \toprule
+    问题 & 资源条件 & 最短时长(s) & 时:分:秒 & 最优性依据 \\
+    \midrule
+    Q1 & 班组 1，A 车间 & 41600 & 11:33:20 & A 车间工序链下界 \\
+    Q2 & 班组 1，五车间 & 163764 & 45:29:24 & 双瓶颈资源松弛下界 \\
+    Q3 & 班组 1 + 2，五车间 & 123844 & 34:24:04 & C 车间关键链下界 \\
+    Q4 & 双班组 + 50 万元预算 & 123844 & 34:24:04 & C 链下界 + 显式采购模型 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=0.86\textwidth]{makespan_summary.png}
+  \caption{四问最短工期对比}
+  \label{fig:makespan-summary}
+\end{figure}

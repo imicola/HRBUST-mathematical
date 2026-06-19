@@ -1,9 +1,56 @@
 % 07_appendix.tex —— 附录
 \section{程序代码}
-% TODO: 用 listings 环境（cls 已预配置）粘贴关键代码；长代码可分文件给出路径。
-% \begin{lstlisting}[language=Python]
-% ...
-% \end{lstlisting}
+
+本文的完整求解、验证和绘图脚本保存在工程目录中。本附录列出关键代码片段，完整脚本路径如下：
+\begin{itemize}
+  \item \path{baseline_v1/code/model_solver.py}：MILP 建模求解并导出四问调度表；
+  \item \path{code/analysis/verify_optimality_chain.py}：Q2 下界与 Q4 采购模型验证；
+  \item \path{code/plot/plot_gantt.py}：根据 CSV 结果表重新生成论文图件。
+\end{itemize}
+
+\lstset{basicstyle=\scriptsize\ttfamily, breakatwhitespace=false}
+
+\subsection{MILP 调度模型核心代码}
+\lstinputlisting[
+  language=Python,
+  firstline=165,
+  lastline=284,
+  caption={MILP 变量、目标与约束构造核心代码}
+]{../../baseline_v1/code/model_solver.py}
+
+\subsection{结果导出与四问求解入口}
+\lstinputlisting[
+  language=Python,
+  firstline=326,
+  lastline=386,
+  caption={四问求解流程与结果导出代码}
+]{../../baseline_v1/code/model_solver.py}
+
+\subsection{CP-SAT 最优性验证核心代码}
+\lstinputlisting[
+  language=Python,
+  firstline=69,
+  lastline=134,
+  caption={问题二双瓶颈资源松弛下界模型}
+]{../../code/analysis/verify_optimality_chain.py}
+
+\lstinputlisting[
+  language=Python,
+  firstline=269,
+  lastline=318,
+  caption={问题四显式采购模型的两阶段优化代码}
+]{../../code/analysis/verify_optimality_chain.py}
+
+\subsection{论文图件生成代码}
+\lstinputlisting[
+  language=Python,
+  firstline=53,
+  lastline=145,
+  caption={甘特图与工期汇总图生成代码}
+]{../../code/plot/plot_gantt.py}
 
 \section{补充图表}
-% TODO: 正文放不下的图、表、数据。
+
+本节给出正文未完整展开的题目要求结果表。表格均由 \path{baseline_v1/results/} 中的 CSV 文件自动生成：问题二、三、四的完整设备调度表分别对应 \path{table2_question2.csv}、\path{table3_question3.csv}、\path{table4_question4.csv}，设备购置表对应 \path{table5_purchase_plan.csv}，四问汇总表对应 \path{summary.csv}。
+
+\input{sections/generated_result_tables}

@@ -1,28 +1,375 @@
 % 05_model.tex —— 模型建立与求解
 \section{模型建立与求解}
-% 每个 \subsection 对应一问，内部用 \subsubsection: 模型建立 / 求解与结果。
-% 数值结果来自 solve/code 的求解（baseline_v1 复审 + 最优性验证链），勿在此处改算法。
 
-\subsection{问题一：单班组单车间调度}
-\subsubsection{模型建立}
-% TODO: 决策变量、目标、约束（A 链）。
-\subsubsection{求解与结果}
-% TODO: makespan = 41600 s；附甘特图（figures/q1_gantt.pdf）。
+\subsection{数据预处理与工时计算}
 
-\subsection{问题二：单班组多车间调度}
-\subsubsection{模型建立}
-% TODO: 引入车间选择与跨车间运输时间。
-\subsubsection{求解与结果}
-% TODO: makespan = 163764 s（双瓶颈松弛下界已证最优）。
+对于设备子任务 $o$，其作业时长由工程量和设备效率计算：
+\begin{equation}
+  p_o=\left\lceil \frac{q_{j(o)}}{v_o}\times 3600 \right\rceil ,
+  \label{eq:duration}
+\end{equation}
+其中 $q_{j(o)}$ 为工序工程量，$v_o$ 为对应设备效率，单位为 $\mathrm{m^3/h}$。若工序 $j$ 需要多类设备共同完成，则该工序链上不可压缩占用时间为
+\begin{equation}
+  d_j=\max_{o:j(o)=j} p_o .
+  \label{eq:job-duration}
+\end{equation}
+例如，A1 需要精密灌装机和自动化输送臂。二者对应持续时间分别为 $5400\,\mathrm{s}$ 和 $4320\,\mathrm{s}$，因此 A1 的工序链占用时长为 $5400\,\mathrm{s}$。
 
-\subsection{问题三：双班组多车间调度}
-\subsubsection{模型建立}
-% TODO: 双班组并行、运输/换型时间随上一作业车间变化。
-\subsubsection{求解与结果}
-% TODO: makespan = 123844 s。
+若设备从位置 $u$ 移动到位置 $v$，转运时间为
+\begin{equation}
+  r_{u,v}=\left\lceil \frac{D_{u,v}}{2}\right\rceil ,
+  \label{eq:travel}
+\end{equation}
+其中 $D_{u,v}$ 为题目附件给出的距离，单位为米。若 $u=v$，则 $r_{u,v}=0$。
 
-\subsection{问题四：预算约束下的设备购置优化}
-\subsubsection{模型建立}
-% TODO: 购置决策变量 + 调度联合模型（或两阶段）。
-\subsubsection{求解与结果}
-% TODO: makespan = 123844 s，最优购置费 = 0 元（CP-SAT 显式采购模型已证）。
+附件给出的两个班组设备配置完全相同。各类型设备数量、速度和单价如表~\ref{tab:equipment} 所示。可以看出，高速抛光机和自动传感多功能机每个班组均只有 1 台，是后续调度中的天然瓶颈资源。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{班组设备配置表}
+  \label{tab:equipment}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabularx}{\textwidth}{c X r r r}
+    \toprule
+    班组 & 设备类型 & 设备数量 & 速度(m/s) & 单价(元) \\
+    \midrule
+    1 & 自动化输送臂 & 4 & 2 & 50000 \\
+    1 & 工业清洗机 & 5 & 2 & 40000 \\
+    1 & 精密灌装机 & 5 & 2 & 35000 \\
+    1 & 自动传感多功能机 & 1 & 2 & 80000 \\
+    1 & 高速抛光机 & 1 & 2 & 75000 \\
+    2 & 自动化输送臂 & 4 & 2 & 50000 \\
+    2 & 工业清洗机 & 5 & 2 & 40000 \\
+    2 & 精密灌装机 & 5 & 2 & 35000 \\
+    2 & 自动传感多功能机 & 1 & 2 & 80000 \\
+    2 & 高速抛光机 & 1 & 2 & 75000 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+展开后的主要工序时长如表~\ref{tab:process-duration} 所示。对于双设备工序，表中工序链占用时间为对应设备子任务时长的最大值。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{展开后主要工序时长摘要}
+  \label{tab:process-duration}
+  \small
+  \renewcommand{\arraystretch}{1.18}
+  \begin{tabularx}{\textwidth}{c c r X r}
+    \toprule
+    车间 & 工序 & 工程量($\mathrm{m^3}$) & 所需设备 & 工序链占用时间(s) \\
+    \midrule
+    A & A1 & 300 & 精密灌装机、自动化输送臂 & 5400 \\
+    A & A2 & 500 & 高速抛光机、工业清洗机 & 18000 \\
+    A & A3 & 500 & 自动传感多功能机 & 18000 \\
+    B & B1 & 120 & 工业清洗机 & 4320 \\
+    B & B2 & 1500 & 精密灌装机、自动化输送臂 & 27000 \\
+    B & B3 & 360 & 精密灌装机 & 3703 \\
+    B & B4 & 360 & 高速抛光机、自动传感多功能机 & 12960 \\
+    C & C1 & 720 & 工业清洗机、自动化输送臂 & 10368 \\
+    C & C2 & 720 & 精密灌装机 & 7406 \\
+    C & C3\_Ri & 360 & 精密灌装机、自动化输送臂 & 6480 \\
+    C & C4\_Ri & 400 & 高速抛光机、工业清洗机 & 14400 \\
+    C & C5\_Ri & 400 & 自动传感多功能机 & 14400 \\
+    D & D1 & 600 & 工业清洗机 & 8640 \\
+    D & D2 & 800 & 精密灌装机、自动化输送臂 & 14400 \\
+    D & D3 & 450 & 精密灌装机 & 4629 \\
+    D & D4 & 1500 & 高速抛光机、自动传感多功能机 & 45000 \\
+    D & D5 & 1500 & 自动传感多功能机 & 18000 \\
+    D & D6 & 700 & 高速抛光机 & 25200 \\
+    E & E1 & 1000 & 工业清洗机 & 14400 \\
+    E & E2 & 600 & 精密灌装机 & 6172 \\
+    E & E3 & 600 & 自动传感多功能机、工业清洗机 & 21600 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{固定设备集合下的混合整数规划模型}
+
+问题一至问题三均可视为固定设备集合下的调度问题，区别仅在于允许使用的车间和设备集合不同。问题一只考虑 A 车间和班组 1；问题二考虑五个车间和班组 1；问题三考虑五个车间和两个班组。
+
+目标函数为最小化全部任务完工时间：
+\begin{equation}
+  \min T .
+  \label{eq:objective}
+\end{equation}
+
+每个设备子任务必须且只能分配给一台对应类型设备：
+\begin{equation}
+  \sum_{m\in M:\,\mathit{type}(m)=\tau(o)} x_{o,m}=1,\quad \forall o\in O .
+  \label{eq:assignment}
+\end{equation}
+
+若工序 $a$ 和 $b$ 属于同一车间，且 $b$ 是 $a$ 的后续相邻工序，则
+\begin{equation}
+  S_b\ge S_a+d_a .
+  \label{eq:precedence}
+\end{equation}
+该约束保证各车间内部工序严格按照题目给定顺序执行。对于任意工序 $j$，总完工时间不得早于该工序完成时间：
+\begin{equation}
+  T\ge S_j+d_j,\quad \forall j\in J .
+  \label{eq:makespan}
+\end{equation}
+
+若子任务 $o$ 分配给设备 $m$，则所属工序开始时间不得早于设备从班组驻地到达该车间的时间：
+\begin{equation}
+  S_{j(o)}\ge r_{\mathit{origin}(m),w(j(o))}x_{o,m}.
+  \label{eq:initial-arrival}
+\end{equation}
+
+若两个子任务 $a,b$ 由同一台设备 $m$ 执行，则二者不能重叠。引入二元排序变量 $y_{a,b,m}$，当 $x_{a,m}=x_{b,m}=1$ 且 $y_{a,b,m}=1$ 时，表示子任务 $a$ 在同一设备 $m$ 上排在 $b$ 之前；当 $y_{a,b,m}=0$ 时，表示 $b$ 排在 $a$ 之前。对应 big-M 线性化为
+\begin{align}
+S_{j(b)}-S_{j(a)}
+&\ge p_a+r_{w(j(a)),w(j(b))}
+-M(1-y_{a,b,m})-M(2-x_{a,m}-x_{b,m}), \label{eq:machine-order-1}\\
+S_{j(a)}-S_{j(b)}
+&\ge p_b+r_{w(j(b)),w(j(a))}
+-My_{a,b,m}-M(2-x_{a,m}-x_{b,m}). \label{eq:machine-order-2}
+\end{align}
+当 $a,b$ 未同时分配给设备 $m$ 时，项 $M(2-x_{a,m}-x_{b,m})$ 使约束自动松弛；当二者同时分配给设备 $m$ 时，两条约束中恰有一条根据 $y_{a,b,m}$ 生效，从而确定二者的先后顺序。本文取 $M=10^6\,\mathrm{s}$，大于所有工序作业时间、转运时间与总工期的可能上界。
+
+\subsection{求解流程与计算设置}
+
+本文采用``精确求解 + 独立下界验证''的两层流程：
+\begin{enumerate}
+  \item 对问题一至问题三，建立固定设备集合下的 MILP 模型，以最小化完工时间 $T$ 为目标求解，得到可行调度表和最优目标值。
+  \item 在得到最优完工时间后，增加约束 $T\le T^\ast$，再以工序开始时间之和为次级目标进行紧凑化，使非关键任务尽量提前，便于输出更紧凑的调度表。
+  \item 对问题二，额外构造仅保留高速抛光机和自动传感多功能机两类单台瓶颈设备冲突的 CP-SAT 松弛模型，得到独立下界。
+  \item 对问题四，构造含采购变量的显式 CP-SAT 模型，先最小化完工时间，再在最优完工时间下最小化采购费用。
+\end{enumerate}
+
+固定设备 MILP 使用 HiGHS 混合整数规划求解器。模型中的连续变量为工序开始时间和完工时间，二元变量为设备分配变量和同设备排序变量。CP-SAT 验证模型用于两个目的：一是对问题二构造瓶颈资源松弛下界；二是对问题四构造采购--调度联合模型。固定设备 MILP 的求解统计如表~\ref{tab:milp-stats} 所示。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{固定设备 MILP 求解统计}
+  \label{tab:milp-stats}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabularx}{\textwidth}{X r c r r r}
+    \toprule
+    子问题 & 最短时长(s) & 求解状态 & 节点数 & LP 迭代 & 求解时间(s) \\
+    \midrule
+    Q1 & 41600 & Optimal & 0 & 15 & 0.01 \\
+    Q2 & 163764 & Optimal & 206 & 2600 & 0.46 \\
+    Q3 & 123844 & Optimal & 800 & 3263 & 1.19 \\
+    Q2 二阶段紧凑化 & 163764 & Optimal & 445 & 3382 & 0.45 \\
+    Q3 二阶段紧凑化 & 123844 & Optimal & 1211 & 16386 & 2.15 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{问题一：班组 1 完成 A 车间}
+
+问题一只涉及 A 车间，工序顺序为 $\text{A1}\rightarrow\text{A2}\rightarrow\text{A3}$。班组 1 到 A 车间距离为 $400\,\mathrm{m}$，设备速度为 $2\,\mathrm{m/s}$，因此最早到达时间为 $200\,\mathrm{s}$。A 车间三道工序的链式占用时间分别为 $5400\,\mathrm{s}$、$18000\,\mathrm{s}$ 和 $18000\,\mathrm{s}$。因此任意可行方案的完工时间均满足
+\begin{equation}
+  T\ge 200+5400+18000+18000=41600\,\mathrm{s}.
+  \label{eq:q1-lb}
+\end{equation}
+优化模型给出的排程恰好达到该下界，故问题一最短完工时间为
+\[
+  \boxed{41600\,\mathrm{s}=11:33:20}.
+\]
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=\textwidth]{gantt_q1.png}
+  \caption{问题一调度甘特图}
+  \label{fig:q1-gantt}
+\end{figure}
+
+\begin{table}[!htbp]
+  \centering
+  \caption{问题一设备调度结果}
+  \label{tab:q1-schedule}
+  \renewcommand{\arraystretch}{1.18}
+  \begin{tabularx}{\textwidth}{r X c c r c}
+    \toprule
+    序号 & 设备编号 & 起始时间 & 结束时间 & 持续工作时间(s) & 工序编号 \\
+    \midrule
+    1 & 精密灌装机1-1 & 00:03:20 & 01:33:20 & 5400 & A1 \\
+    2 & 自动化输送臂1-4 & 00:03:20 & 01:15:20 & 4320 & A1 \\
+    3 & 工业清洗机1-5 & 01:33:20 & 03:33:20 & 7200 & A2 \\
+    4 & 高速抛光机1-1 & 01:33:20 & 06:33:20 & 18000 & A2 \\
+    5 & 自动传感多功能机1-1 & 06:33:20 & 11:33:20 & 18000 & A3 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{问题二：班组 1 完成五车间}
+
+问题二使用班组 1 的设备完成五个车间全部任务。相比问题一，问题二新增了多车间并行、设备跨车间转运和单班组资源竞争。班组 1 中高速抛光机和自动传感多功能机均只有 1 台。由于 A、B、C、D 等车间的关键工序均需要这两类设备，它们构成问题二的主要瓶颈。
+
+为证明最优性，本文构造如下松弛模型：保留所有车间内部工序链约束、所有工序最短占用时间 $d_j$、班组 1 初始到达各车间的时间约束；仅对高速抛光机和自动传感多功能机保留设备互斥和跨车间转运时间；放松自动化输送臂、工业清洗机、精密灌装机的设备互斥冲突。该松弛模型删除了部分资源冲突，故其最优值是原问题的合法下界。CP-SAT 求解该松弛模型得到
+\[
+  LB_{Q2}=163764\,\mathrm{s}.
+\]
+完整调度模型同时给出一组完工时间为 $163764\,\mathrm{s}$ 的可行排程，因此
+\[
+  163764\le OPT(Q2)\le 163764.
+\]
+故在本文采用的双设备同步协同模型下，问题二全局最优完工时间为
+\[
+  \boxed{163764\,\mathrm{s}=45:29:24}.
+\]
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=\textwidth]{gantt_q2.png}
+  \caption{问题二调度甘特图}
+  \label{fig:q2-gantt}
+\end{figure}
+
+双瓶颈资源松弛模型中的关键设备序列如表~\ref{tab:q2-polishing} 和表~\ref{tab:q2-sensing} 所示。它们说明在单班组情况下，完工时间主要由高速抛光机和自动传感多功能机的占用顺序决定。完整的问题二设备调度表见附录表~\ref{tab:appendix-q2}。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{问题二高速抛光机瓶颈序列}
+  \label{tab:q2-polishing}
+  \renewcommand{\arraystretch}{1.15}
+  \begin{tabularx}{\textwidth}{c c c c r}
+    \toprule
+    工序 & 车间 & 开始 & 结束 & 本设备时长(s) \\
+    \midrule
+    A2 & A & 01:33:20 & 06:33:20 & 18000 \\
+    C4\_R1 & C & 06:48:04 & 10:08:04 & 12000 \\
+    D4 & D & 10:12:24 & 22:42:24 & 45000 \\
+    C4\_R2 & C & 22:46:44 & 26:06:44 & 12000 \\
+    B4 & B & 31:55:54 & 34:55:54 & 10800 \\
+    C4\_R3 & C & 35:05:04 & 38:25:04 & 12000 \\
+    D6 & D & 38:29:24 & 45:29:24 & 25200 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\begin{table}[!htbp]
+  \centering
+  \caption{问题二自动传感多功能机瓶颈序列}
+  \label{tab:q2-sensing}
+  \renewcommand{\arraystretch}{1.15}
+  \begin{tabularx}{\textwidth}{c c c c r}
+    \toprule
+    工序 & 车间 & 开始 & 结束 & 本设备时长(s) \\
+    \midrule
+    E3 & E & 05:46:12 & 07:46:12 & 7200 \\
+    D4 & D & 10:12:24 & 15:12:24 & 18000 \\
+    C5\_R1 & C & 15:16:44 & 19:16:44 & 14400 \\
+    D5 & D & 22:42:24 & 27:42:24 & 18000 \\
+    C5\_R2 & C & 27:46:44 & 31:46:44 & 14400 \\
+    B4 & B & 31:55:54 & 35:31:54 & 12960 \\
+    A3 & A & 35:40:24 & 40:40:24 & 18000 \\
+    C5\_R3 & C & 40:49:09 & 44:49:09 & 14400 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{问题三：两班组共同完成五车间}
+
+问题三允许使用班组 1 和班组 2 的全部设备。两班组设备配置相同，因此各类设备数量相比问题二翻倍。设备数量增加后，单台设备瓶颈显著缓解，但 C 车间工序链成为不可压缩的全局关键路径。
+
+C 车间展开后的工序链为 $\text{C1}\rightarrow \text{C2}\rightarrow(\text{C3}\rightarrow\text{C4}\rightarrow\text{C5})\times 3$。其不含初始转运的最短链长为
+\begin{align}
+  L_C
+  &=10368+7406+3(6480+14400+14400) \nonumber\\
+  &=123614\,\mathrm{s}.
+  \label{eq:c-chain}
+\end{align}
+两班组到 C 车间的初始转运时间分别为 $230\,\mathrm{s}$ 和 $310\,\mathrm{s}$，因此任意调度方案的完工时间满足
+\begin{equation}
+  T\ge 123614+230=123844\,\mathrm{s}.
+  \label{eq:q3-lb}
+\end{equation}
+完整调度模型给出的两班组排程达到该下界，因此问题三全局最优完工时间为
+\[
+  \boxed{123844\,\mathrm{s}=34:24:04}.
+\]
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=\textwidth]{gantt_q3.png}
+  \caption{问题三调度甘特图}
+  \label{fig:q3-gantt}
+\end{figure}
+
+从图~\ref{fig:q3-gantt} 可以看出，在两班组共同参与后，多个车间工序能够并行推进，但 C 车间链上工序仍必须依次完成。最终完工时刻对应 C5\_R3 的完成，说明 C 车间关键链确实决定了全局工期。问题三完整设备调度表见附录表~\ref{tab:appendix-q3}。
+
+\subsection{问题四：预算约束下的设备购置与调度}
+
+问题四在问题三基础上增加 50 万元设备购置预算。对每一台候选增购设备 $m$，定义二元变量
+\[
+z_m=
+\begin{cases}
+1,&\text{购买设备 }m,\\
+0,&\text{不购买设备 }m.
+\end{cases}
+\]
+预算约束为
+\begin{equation}
+  \sum_m \mathit{price}_m z_m\le 500000 .
+  \label{eq:budget}
+\end{equation}
+若某设备子任务分配给增购设备 $m$，则必须购买该设备：
+\begin{equation}
+  x_{o,m}\le z_m .
+  \label{eq:purchase-activation}
+\end{equation}
+在此基础上，调度部分沿用固定设备模型中的工序链、设备互斥、初始到达和跨车间运输约束。
+
+问题四采用字典序优化。第一阶段求解 $\min T$；在得到最优完工时间 $T^\ast$ 后，第二阶段固定 $T=T^\ast$，再最小化采购费用 $\sum_m \mathit{price}_m z_m$。显式采购模型求得第一阶段最优完工时间仍为
+\[
+  T^\ast=123844\,\mathrm{s}.
+\]
+第二阶段在固定 $T=123844\,\mathrm{s}$ 的条件下，得到最小采购费用为 0 元。因此问题四最优采购方案为所有设备均购买 0 台。
+
+该结论也可由 C 车间关键链解释。问题三已经达到 C 车间关键链下界
+\[
+  123614+230=123844\,\mathrm{s}.
+\]
+新增设备只能增加不同工序或不同车间之间的并行能力，不能缩短 C 车间链上任一单工序的作业时长，也不能改变 C 车间内部严格顺序。因此任何采购方案均无法使完工时间低于 $123844\,\mathrm{s}$。
+
+\begin{figure}[!htbp]
+  \centering
+  \includegraphics[width=\textwidth]{gantt_q4.png}
+  \caption{问题四调度甘特图}
+  \label{fig:q4-gantt}
+\end{figure}
+
+问题四设备购买情况如表~\ref{tab:q4-purchase} 所示。由于最优采购为 0 台，设备集合与问题三相同，最优调度策略可直接采用问题三的双班组调度表；问题四完整调度表见附录表~\ref{tab:appendix-q4}。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{问题四设备购买情况}
+  \label{tab:q4-purchase}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabularx}{\textwidth}{X r r r r}
+    \toprule
+    设备名称 & 班组1购买台数 & 班组2购买台数 & 设备单价(元) & 小计(元) \\
+    \midrule
+    自动化输送臂 & 0 & 0 & 50000 & 0 \\
+    工业清洗机 & 0 & 0 & 40000 & 0 \\
+    精密灌装机 & 0 & 0 & 35000 & 0 \\
+    自动传感多功能机 & 0 & 0 & 80000 & 0 \\
+    高速抛光机 & 0 & 0 & 75000 & 0 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+为分析追加预算对最优工期的影响，考虑预算上限 $B$ 从 0 增加到 500000 元的情形。由于问题三在无新增设备时已经达到 C 车间关键链下界，且采购设备不能改变 C 车间内部严格顺序，也不能缩短单个工序的固有作业时长，因此任意非负预算下的最优工期均不可能低于该下界。预算敏感性结果如表~\ref{tab:budget-sensitivity} 所示。
+
+\begin{table}[!htbp]
+  \centering
+  \caption{预算敏感性分析}
+  \label{tab:budget-sensitivity}
+  \renewcommand{\arraystretch}{1.2}
+  \begin{tabularx}{\textwidth}{r X r c c}
+    \toprule
+    预算上限(元) & 可行采购方案 & 最优完工时间(s) & HH:MM:SS & 是否达到 C 链下界 \\
+    \midrule
+    0 & 不采购 & 123844 & 34:24:04 & 是 \\
+    100000 & 不采购 & 123844 & 34:24:04 & 是 \\
+    200000 & 不采购 & 123844 & 34:24:04 & 是 \\
+    300000 & 不采购 & 123844 & 34:24:04 & 是 \\
+    400000 & 不采购 & 123844 & 34:24:04 & 是 \\
+    500000 & 不采购 & 123844 & 34:24:04 & 是 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}

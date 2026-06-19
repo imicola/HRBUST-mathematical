@@ -9,6 +9,8 @@
 
 \usepackage{amsmath}
 \usepackage{pdfpages}
+\usepackage{float}
+\graphicspath{{figures/}}
 
 % ---- 参考文献：biblatex + GB/T 7714-2015（顺序编码制）----
 \usepackage[backend=biber, style=gb7714-2015, gbnamefmt=lowercase]{biblatex}
@@ -33,29 +35,28 @@
 \renewcommand{\footrulewidth}{0pt}
 
 % ---- 论文元信息（团队填写）----
-\title{多工序协同作业调度优化模型}   % TODO: 最终标题
-\baominghao{No.00000000}             % TODO: 参赛队号
-\schoolname{XX 大学}                 % TODO: 学校名称
-\membera{队员一}                     % TODO
-\memberb{队员二}                     % TODO
-\memberc{队员三}                     % TODO
+\title{多工序协同作业调度与设备购置优化模型}
+\baominghao{16组}
+\schoolname{哈尔滨理工大学}
+\membera{骆宏博}
+\memberb{梁震宇}
+\memberc{赵晨曦}
 
 %==============================================================================
 %  封面：本次无官方封面，采用「题目版式」封面（仿 cls 原生 \makenametitle：
 %  顶部竞赛名文字 + 「题　目」行 + 队员信息表，单页、无图片依赖）。
-%  跳过 cls 内置带「华为杯」logo 的前言页；拿到官方封面后在此替换。
 %==============================================================================
 \makeatletter
 \renewcommand{\maketitle}{%
   \thispagestyle{empty}%
   \vspace*{2.5cm}
   \begin{center}
-    {\xinwei\zihao{2} 五一数学建模竞赛（校赛模拟）\par}
+    {\xinwei\zihao{2} 数学建模竞赛（校赛模拟）\par}
     \vskip0.4cm
     {\zihao{3}\heiti B\quad 题\par}
     \vskip1.8cm
     \begin{tabularx}{.95\textwidth}{@{}lX@{}}
-      {\zihao{4} 题\qquad 目} & \hfill\zihao{3}\heiti \@title \hfill\null \\
+      {\zihao{4} 题\qquad 目} & \hfill\zihao{-3}\heiti \@title \hfill\null \\
       \cline{2-2}
     \end{tabularx}
   \end{center}
@@ -84,15 +85,15 @@
 %  关键词 3–5 个，分号分隔，末尾无标点。
 %==============================================================================
 \begin{abstract}
-% TODO: 全文完成后最后写。结构建议：
-%  第一段：题目类型 + 核心方法 + 模型/算法创新点。
-%  第二~五段：问题一~四各一段，给出建模思路、求解算法与关键数值结果。
-%  末段（可选）：模型评价与推广。
+针对五个车间集中整修任务中的多工序协同作业问题，本文将其抽象为带车间内工序链约束、同类设备可替代、双设备协同作业以及跨车间序列相关运输时间的多资源调度问题。首先对 C 车间循环工序进行展开，将原始工序转化为 27 个工序实例和 41 个设备子任务；然后建立以最小化全部任务完工时间为目标的混合整数规划模型，并通过设备分配变量、工序开始时间变量和同设备排序变量刻画工序顺序、设备互斥与跨车间转运约束。针对追加设备购置预算的问题，进一步引入采购变量和预算约束，形成采购--调度联合优化模型。为增强结果可信度，本文还使用 CP-SAT 构造问题二的瓶颈资源松弛下界和问题四的显式采购验证模型，对混合整数规划结果进行交叉验证。
 
-\keywords{多工序调度；混合整数规划；CP-SAT 精确求解；遗传算法；甘特图}
+求解结果表明：仅由班组 1 完成 A 车间任务时，最短完工时间为 $41600\,\mathrm{s}$，即 11:33:20；仅使用班组 1 完成五个车间任务时，最短完工时间为 $163764\,\mathrm{s}$，即 45:29:24；两个班组共同作业时，最短完工时间缩短为 $123844\,\mathrm{s}$，即 34:24:04；在 50 万元购置预算下，最短完工时间仍为 $123844\,\mathrm{s}$，最优采购方案为不购置任何设备。进一步地，问题一由 A 车间工序链下界证明最优，问题二由高速抛光机和自动传感多功能机双瓶颈资源松弛下界证明在本文双设备同步协同模型下最优，问题三和问题四由 C 车间关键工序链下界及显式采购模型证明最优。该方案不仅给出满足题目要求的设备调度表和采购方案，也为多车间协同调度问题提供了可复现、可解释的精确建模框架。
+
+\keywords{多工序协同作业；柔性作业车间调度；混合整数规划；CP-SAT；设备购置优化}
 \end{abstract}
 
 \tableofcontents
+\clearpage
 
 \input{sections/01_restatement}    % 一、问题重述
 \input{sections/02_analysis}       % 二、问题分析
@@ -101,8 +102,10 @@
 \input{sections/05_model}          % 五、模型建立与求解（Q1–Q4）
 \input{sections/06_evaluation}     % 六、模型评价与推广
 
+\clearpage
 \printbibliography                  % 七、参考文献
 
+\clearpage
 \appendix
 \input{sections/07_appendix}       % 附录
 
