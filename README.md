@@ -24,13 +24,15 @@ solve/
 ├── data/                         # 数据
 │   ├── raw/                      # 原始附件 B-附件.xlsx（需手动放入）
 │   └── processed/                # 中间数据（git 忽略）
-├── code/                         # 解题代码（按子问题分目录）
-│   ├── Q1_单车间调度/            # Q1 班组1完成A车间（精确求解）
-│   ├── Q2_多车间调度/            # Q2 班组1完成5车间（元启发式）
-│   ├── Q3_双班组调度/            # Q3 班组1+2完成5车间
-│   ├── Q4_预算购置优化/          # Q4 50万预算+调度联合优化
-│   ├── common/                   # 公共工具（数据加载/实例/甘特图/指标/出表）
-│   └── solvers/                  # 求解器封装（CP-SAT / GA / SA / 解码器）
+├── code/                         # 解题代码与验证脚本
+│   ├── analysis/                 # Q2 下界与 Q4 显式采购 CP-SAT 验证
+│   ├── plot/                     # 论文图件重生成脚本
+│   ├── Q1_单车间调度/            # 早期模块规划（当前非主复现入口）
+│   ├── Q2_多车间调度/            # 早期模块规划（当前非主复现入口）
+│   ├── Q3_双班组调度/            # 早期模块规划（当前非主复现入口）
+│   ├── Q4_预算购置优化/          # 早期模块规划（当前非主复现入口）
+│   ├── common/                   # 后续扩展公共工具规划
+│   └── solvers/                  # 后续扩展求解器规划
 ├── baseline_v1/                  # 【v1 基线参考】初版分析报告（已复审）
 │   ├── code/model_solver.py      #   单体 MILP 求解脚本（scipy.optimize.milp / HiGHS）
 │   ├── code/create_report.py     #   报告生成脚本（python-docx）
@@ -42,14 +44,17 @@ solve/
 └── results/                      # 表1~表5 结果输出（git 忽略中间产物）
 ```
 
-## 子问题与求解策略速查
+## 当前正式方法路线
 
-| 子问题 | 规模 | 推荐解法 | 关键库 |
-|:------|:-----|:--------|:-------|
-| Q1 单车间（班组1, A车间） | 3工序×5类设备 | OR-Tools CP-SAT 精确求解 | ortools |
-| Q2 多车间（班组1, 5车间） | 展开后约27个工序实例+运输 | 遗传算法（MSOS编码） | deap |
-| Q3 双班组（班组1+2, 5车间） | 约27个工序实例+班组选择 | 扩展GA+局部搜索 | deap |
-| Q4 预算购置+调度 | 双层决策 | 外层枚举瓶颈设备+内层GA | ortools+deap |
+当前论文与可复现代码统一采用以下路线：
+
+| 层次 | 作用 | 入口 |
+|:-----|:-----|:-----|
+| 主调度模型 | MILP / HiGHS 生成 Q1-Q4 数值结果与 CSV 调度表 | `baseline_v1/code/model_solver.py` |
+| 独立验证模型 | CP-SAT 验证 Q2 双瓶颈松弛下界与 Q4 显式采购模型 | `code/analysis/verify_optimality_chain.py` |
+| 论文图件 | 从 CSV 结果表重生成甘特图与 makespan 对比图 | `code/plot/plot_gantt.py` |
+
+遗传算法、模拟退火、DEAP 等启发式方法仅作为**大规模推广方向**保留，不作为本文 Q1-Q4 结果来源。
 
 ## 题目关键约束备忘
 
@@ -72,8 +77,10 @@ uv pip install -r requirements.txt   # 或 pip install -r requirements.txt
 
 # 3. 放入数据：将 B 题附件 B-附件.xlsx 复制到 data/raw/
 
-# 4. 运行某子问题代码
-python code/Q1_单车间调度/main.py
+# 4. 复现正式结果
+python baseline_v1/code/model_solver.py
+python code/analysis/verify_optimality_chain.py
+python code/plot/plot_gantt.py
 ```
 
 ## v1 基线参考（`baseline_v1/`）
@@ -82,11 +89,11 @@ python code/Q1_单车间调度/main.py
 
 > **已完成复审**：见 [`docs/analysis/baseline_v1复审与算法方向决策.md`](docs/analysis/baseline_v1复审与算法方向决策.md)。
 > **完整分析链**：见 [`docs/analysis/B题完整分析链与最优性验证.md`](docs/analysis/B题完整分析链与最优性验证.md)，已补 Q2 双瓶颈资源松弛下界与 Q4 显式采购 CP-SAT 验证。
-> 复审结论：v1 模型正确、结果可信（4.73s 全局最优复现），Q1/Q2/Q3/Q4 均已有下界或显式模型背书。**算法方向决策：以 v1 已证最优结果为答案底座，方法层 PORT 到 OR-Tools CP-SAT 作正式呈现+交叉验证，GA 降级为对比启发式。**
+> 复审结论：v1 模型正确、结果可信（4.73s 全局最优复现），Q1/Q2/Q3/Q4 均已有下界或显式模型背书。**当前正式路线：以 MILP/HiGHS 作为完整调度主模型，使用 CP-SAT 构造独立下界与采购验证模型；GA 仅作为后续大规模推广方向。**
 
 - **方法**：混合整数线性规划（`scipy.optimize.milp` / HiGHS），Q1~Q3 求全局最优，Q4 由 C 车间关键路径下界证明最优采购为 0 台。
 - **核心结论**：Q1 = 41600s（11:33:20）、Q2 = 163764s（45:29:24）、Q3 = 123844s（34:24:04）、Q4 = 123844s（采购 0 台）。
-- **栈差异提醒**：v1 用 `scipy.milp`；本仓库主计划走 OR-Tools CP-SAT + DEAP（见上方策略表）。复现 v1 需 `scipy` + `python-docx`（已纳入 `requirements.txt`）。
+- **栈说明**：完整调度主模型使用 `scipy.optimize.milp` / HiGHS；验证模型使用 OR-Tools CP-SAT；论文图件使用 matplotlib。
 
 复现 v1：
 
@@ -94,7 +101,7 @@ python code/Q1_单车间调度/main.py
 source .venv/bin/activate
 cd baseline_v1
 python code/model_solver.py        # 重新生成 results/*.csv 并打印 Q1~Q4 最短时长
-python code/create_report.py       # 重新生成 docs/研究报告.{md,docx} 与 figures/
+python code/create_report.py       # 重新生成 docs/研究报告.{md,docx}（引用现有图件）
 ```
 
 复现 Q2/Q4 独立验证：
@@ -102,6 +109,13 @@ python code/create_report.py       # 重新生成 docs/研究报告.{md,docx} �
 ```bash
 source .venv/bin/activate
 python code/analysis/verify_optimality_chain.py
+```
+
+重生成论文图件：
+
+```bash
+source .venv/bin/activate
+python code/plot/plot_gantt.py
 ```
 
 > 注：v1 的 `source/`（竞赛题目原文件）未入库——属版权材料，且数据已硬编码于 `model_solver.py`，复现无需原附件。

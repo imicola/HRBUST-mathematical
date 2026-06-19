@@ -17,6 +17,7 @@ structured instance data, then builds two smaller CP-SAT models:
 from __future__ import annotations
 
 import sys
+import csv
 from collections import defaultdict
 from pathlib import Path
 
@@ -37,8 +38,7 @@ from baseline_v1.code.model_solver import (  # noqa: E402
 
 BUDGET = 500_000
 HORIZON = 300_000
-Q2_BASELINE = 163_764
-Q3_Q4_BASELINE = 123_844
+SUMMARY_PATH = PROJECT_ROOT / "baseline_v1" / "results" / "summary.csv"
 BOTTLENECK_TYPES = [
     "High-speed Polishing Machine",
     "Automatic Sensing Multi-Function Machine",
@@ -48,6 +48,12 @@ BOTTLENECK_TYPES = [
 def sec_to_hms(sec: int | float) -> str:
     sec = int(round(sec))
     return f"{sec // 3600:02d}:{(sec % 3600) // 60:02d}:{sec % 60:02d}"
+
+
+def load_baseline_results() -> dict[str, int]:
+    with SUMMARY_PATH.open("r", encoding="utf-8-sig", newline="") as f:
+        rows = csv.DictReader(f)
+        return {row["问题"]: int(row["最短时长(s)"]) for row in rows}
 
 
 def add_workshop_chains(model: cp_model.CpModel, starts, processes) -> None:
@@ -102,26 +108,27 @@ def solve_q2_bottleneck_lower_bound():
     solver.parameters.num_search_workers = 1
     solver.parameters.random_seed = 1
     status = solver.Solve(model)
+    if status != cp_model.OPTIMAL:
+        raise RuntimeError(f"Q2 bottleneck relaxation was not proven optimal: {solver.StatusName(status)}")
 
     sequences = {}
-    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-        for equipment_type in BOTTLENECK_TYPES:
-            jobs = [j for j, p in enumerate(processes) if equipment_type in p["durations"]]
-            sequences[equipment_type] = [
-                {
-                    "pid": processes[j]["pid"],
-                    "workshop": processes[j]["workshop"],
-                    "start": solver.Value(starts[j]),
-                    "end": solver.Value(starts[j]) + processes[j]["durations"][equipment_type],
-                    "duration": processes[j]["durations"][equipment_type],
-                    "job_maxdur": processes[j]["maxdur"],
-                }
-                for j in sorted(jobs, key=lambda k: solver.Value(starts[k]))
-            ]
+    for equipment_type in BOTTLENECK_TYPES:
+        jobs = [j for j, p in enumerate(processes) if equipment_type in p["durations"]]
+        sequences[equipment_type] = [
+            {
+                "pid": processes[j]["pid"],
+                "workshop": processes[j]["workshop"],
+                "start": solver.Value(starts[j]),
+                "end": solver.Value(starts[j]) + processes[j]["durations"][equipment_type],
+                "duration": processes[j]["durations"][equipment_type],
+                "job_maxdur": processes[j]["maxdur"],
+            }
+            for j in sorted(jobs, key=lambda k: solver.Value(starts[k]))
+        ]
 
     return {
         "status": solver.StatusName(status),
-        "objective": int(round(solver.ObjectiveValue())) if status in (cp_model.OPTIMAL, cp_model.FEASIBLE) else None,
+        "objective": int(round(solver.ObjectiveValue())),
         "best_bound": int(round(solver.BestObjectiveBound())),
         "sequences": sequences,
     }
@@ -269,44 +276,40 @@ def solve_q4_explicit_purchase():
     solver.parameters.num_search_workers = 1
     solver.parameters.random_seed = 1
     status = solver.Solve(model)
+    if status != cp_model.OPTIMAL:
+        raise RuntimeError(f"Q4 purchase stage 1 was not proven optimal: {solver.StatusName(status)}")
 
     first_stage = {
         "status": solver.StatusName(status),
-        "objective": int(round(solver.ObjectiveValue())) if status in (cp_model.OPTIMAL, cp_model.FEASIBLE) else None,
+        "objective": int(round(solver.ObjectiveValue())),
         "best_bound": int(round(solver.BestObjectiveBound())),
         "wall_time": solver.WallTime(),
     }
 
-    second_stage = None
-    purchased = []
-    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-        optimal_makespan = int(round(solver.ObjectiveValue()))
-        model.Add(built["makespan"] <= optimal_makespan)
-        model.Minimize(built["purchase_cost"])
+    optimal_makespan = int(round(solver.ObjectiveValue()))
+    model.Add(built["makespan"] <= optimal_makespan)
+    model.Minimize(built["purchase_cost"])
 
-        solver2 = cp_model.CpSolver()
-        solver2.parameters.max_time_in_seconds = 60
-        solver2.parameters.num_search_workers = 1
-        solver2.parameters.random_seed = 1
-        status2 = solver2.Solve(model)
-        if status2 in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-            purchased = [
-                built["machines"][mi]["id"]
-                for mi, z in built["purchase"].items()
-                if solver2.Value(z)
-            ]
-        second_stage = {
-            "status": solver2.StatusName(status2),
-            "purchase_cost": int(round(solver2.ObjectiveValue()))
-            if status2 in (cp_model.OPTIMAL, cp_model.FEASIBLE)
-            else None,
-            "best_bound": int(round(solver2.BestObjectiveBound())),
-            "makespan": solver2.Value(built["makespan"])
-            if status2 in (cp_model.OPTIMAL, cp_model.FEASIBLE)
-            else None,
-            "wall_time": solver2.WallTime(),
-            "purchased": purchased,
-        }
+    solver2 = cp_model.CpSolver()
+    solver2.parameters.max_time_in_seconds = 60
+    solver2.parameters.num_search_workers = 1
+    solver2.parameters.random_seed = 1
+    status2 = solver2.Solve(model)
+    if status2 != cp_model.OPTIMAL:
+        raise RuntimeError(f"Q4 purchase stage 2 was not proven optimal: {solver2.StatusName(status2)}")
+    purchased = [
+        built["machines"][mi]["id"]
+        for mi, z in built["purchase"].items()
+        if solver2.Value(z)
+    ]
+    second_stage = {
+        "status": solver2.StatusName(status2),
+        "purchase_cost": int(round(solver2.ObjectiveValue())),
+        "best_bound": int(round(solver2.BestObjectiveBound())),
+        "makespan": solver2.Value(built["makespan"]),
+        "wall_time": solver2.WallTime(),
+        "purchased": purchased,
+    }
 
     return {
         "first_stage": first_stage,
@@ -315,12 +318,13 @@ def solve_q4_explicit_purchase():
     }
 
 
-def print_q2(result) -> None:
+def print_q2(result, baseline_results: dict[str, int]) -> None:
     print("Q2 bottleneck relaxation lower bound")
     print(f"status: {result['status']}")
     print(f"objective: {result['objective']} s = {sec_to_hms(result['objective'])}")
     print(f"best_bound: {result['best_bound']} s")
-    print(f"matches_baseline: {result['objective'] == Q2_BASELINE}")
+    print(f"baseline_q2: {baseline_results['Q2']} s")
+    print(f"matches_baseline: {result['objective'] == baseline_results['Q2']}")
     for equipment_type, sequence in result["sequences"].items():
         print(f"\n{TYPE_ZH[equipment_type]} bottleneck sequence")
         for item in sequence:
@@ -331,7 +335,7 @@ def print_q2(result) -> None:
             )
 
 
-def print_q4(result) -> None:
+def print_q4(result, baseline_results: dict[str, int]) -> None:
     print("\nQ4 explicit purchase-and-scheduling CP-SAT model")
     print("model_stats:")
     for key, value in result["stats"].items():
@@ -342,7 +346,8 @@ def print_q4(result) -> None:
     print(f"  status: {first['status']}")
     print(f"  objective: {first['objective']} s = {sec_to_hms(first['objective'])}")
     print(f"  best_bound: {first['best_bound']} s")
-    print(f"  matches_q3_q4_baseline: {first['objective'] == Q3_Q4_BASELINE}")
+    print(f"  baseline_q3_q4: {baseline_results['Q3']} s / {baseline_results['Q4']} s")
+    print(f"  matches_q3_q4_baseline: {first['objective'] == baseline_results['Q3'] == baseline_results['Q4']}")
 
     second = result["second_stage"]
     if second is not None:
@@ -355,10 +360,11 @@ def print_q4(result) -> None:
 
 
 def main() -> None:
+    baseline_results = load_baseline_results()
     q2 = solve_q2_bottleneck_lower_bound()
     q4 = solve_q4_explicit_purchase()
-    print_q2(q2)
-    print_q4(q4)
+    print_q2(q2, baseline_results)
+    print_q4(q4, baseline_results)
 
 
 if __name__ == "__main__":

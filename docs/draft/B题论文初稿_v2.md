@@ -65,7 +65,7 @@ C1 -> C2 -> C3_R1 -> C4_R1 -> C5_R1
 | 问题 | 资源条件 | 最短时长(s) | 时:分:秒 | 最优性依据 |
 |---|---|---:|---|---|
 | 问题一 | 班组 1，A 车间 | 41600 | 11:33:20 | A 车间工序链下界 |
-| 问题二 | 班组 1，五车间 | 163764 | 45:29:24 | 双瓶颈资源松弛下界 |
+| 问题二 | 班组 1，五车间 | 163764 | 45:29:24 | 双瓶颈资源松弛下界（同步协同模型） |
 | 问题三 | 班组 1 + 2，五车间 | 123844 | 34:24:04 | C 车间关键链下界 |
 | 问题四 | 双班组 + 50 万预算 | 123844 | 34:24:04 | C 链下界 + 显式采购模型 |
 
@@ -314,6 +314,20 @@ S_{j(a)}\ge S_{j(b)}+p_b+r_{w(j(b)),w(j(a))}.
 $$
 
 这是一类带序列相关准备时间的设备互斥约束。实际计算中可用 big-M 线性化，也可用 CP-SAT 的逻辑约束表达。本文求解结果由 MILP 得到，并通过 CP-SAT 构造关键松弛模型和采购模型进行交叉验证。
+
+为使上述析取逻辑成为可求解的 MILP，引入二元排序变量 $y_{a,b,m}$。当 $x_{a,m}=x_{b,m}=1$ 且 $y_{a,b,m}=1$ 时，表示子任务 $a$ 在同一设备 $m$ 上排在 $b$ 之前；当 $x_{a,m}=x_{b,m}=1$ 且 $y_{a,b,m}=0$ 时，表示 $b$ 排在 $a$ 之前。对应 big-M 线性化可写为：
+
+$$
+S_{j(b)}-S_{j(a)} \ge p_a+r_{w(j(a)),w(j(b))}
+-M(1-y_{a,b,m})-M(2-x_{a,m}-x_{b,m}),
+$$
+
+$$
+S_{j(a)}-S_{j(b)} \ge p_b+r_{w(j(b)),w(j(a))}
+-My_{a,b,m}-M(2-x_{a,m}-x_{b,m}).
+$$
+
+当 $a,b$ 未同时分配给设备 $m$ 时，项 $M(2-x_{a,m}-x_{b,m})$ 使约束自动松弛；当二者同时分配给设备 $m$ 时，两条约束中恰有一条根据 $y_{a,b,m}$ 生效，从而确定二者的先后顺序。本文取 $M=10^6$ 秒，大于所有工序作业时间、转运时间与总工期的可能上界，因此足以保证非生效约束被松弛。
 
 ---
 
@@ -744,7 +758,13 @@ objective: 123844 s = 34:24:04
 purchase_cost: 0 yuan
 ```
 
-需要说明的是，当前脚本能够复现数值结果和结果表；本文插入的甘特图是基于这些结果表绘制的可视化产物，当前版本未将绘图过程作为可复现脚本的一部分。正式排版阶段可补充统一绘图脚本，以进一步增强图形产物的可复现性。
+论文图件可由以下脚本根据 CSV 结果表重新生成：
+
+```bash
+python code/plot/plot_gantt.py
+```
+
+该脚本读取 `baseline_v1/results/` 中的表 1 至表 4 以及汇总表，生成 `docs/figures/gantt_q1.png` 至 `gantt_q4.png` 和 `makespan_summary.png`。因此，本文的数值结果、调度表和主要图件均形成了可复现闭环。
 
 ---
 
@@ -755,14 +775,14 @@ purchase_cost: 0 yuan
 1. **约束覆盖完整**。模型同时考虑车间内部工序链、双设备协同、同设备互斥、跨车间运输和采购预算等题目核心约束。
 2. **结果可证明最优**。四个问题均由可行解和独立下界或显式模型共同支撑，避免了单纯启发式方法无法证明最优的不足。
 3. **解释性较强**。问题二可解释为单班组下瓶颈设备限制，问题三和问题四可解释为 C 车间关键链限制，便于从调度管理角度理解结果。
-4. **数值复现性好**。工序时长、运输时间和设备配置均显式结构化，最短时长和 CSV 调度表可由脚本重新生成，甘特图则作为结果表的可视化展示。
+4. **复现性好**。工序时长、运输时间和设备配置均显式结构化，最短时长、CSV 调度表和论文主要图件均可由脚本重新生成。
 
 ### 13.2 模型局限
 
 1. 双设备工序采用同时起算解释，虽然符合题意，但在更复杂的实际场景中可进一步放宽为异步协同模型。
 2. 当前实例规模较小，精确求解器可以快速证明最优；若车间数、工序数和设备数显著增加，模型求解难度会快速上升。
 3. 采购模型默认新增设备立即可用，且性能与原设备完全一致，未考虑采购周期、维护成本、设备故障等现实因素。
-4. 当前版本尚未将甘特图绘制过程脚本化，后续正式稿可补充绘图脚本和资源负载图，完善图形结果的可复现链条。
+4. 当前图件主要服务于调度结果展示，后续仍可补充资源负载图、关键路径高亮图和预算敏感性曲线，使图形分析更丰富。
 
 ### 13.3 推广方向
 
@@ -787,15 +807,15 @@ purchase_cost: 0 yuan
 
 ## 参考文献
 
-[1] Ku W Y, Beck J C. Mixed Integer Programming Models for Job Shop Scheduling: A Computational Analysis.
+[1] Ku W Y, Beck J C. Mixed Integer Programming models for job shop scheduling: A computational analysis[J]. Computers & Operations Research, 2016, 73: 165-173.
 
-[2] Artigues C, Lopez P, Ayache P D. Schedule generation schemes for the job-shop problem with sequence-dependent setup times: dominance properties and computational analysis.
+[2] Artigues C, Lopez P, Ayache P D. Schedule generation schemes for the job-shop problem with sequence-dependent setup times: Dominance properties and computational analysis[J]. Annals of Operations Research, 2005, 138(1): 21-52.
 
-[3] Lan L, Berkhout J. PyJobShop: Solving scheduling problems with constraint programming in Python, 2025.
+[3] Lan L, Berkhout J. PyJobShop: Solving scheduling problems with constraint programming in Python[EB/OL]. arXiv:2502.13483, 2025.
 
-[4] SciPy Documentation. `scipy.optimize.milp`.
+[4] SciPy Developers. scipy.optimize.milp documentation[EB/OL]. https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.milp.html, 访问日期: 2026-06-19.
 
-[5] Google OR-Tools Documentation. CP-SAT Solver.
+[5] Google OR-Tools Developers. CP-SAT solver documentation[EB/OL]. https://developers.google.com/optimization/cp/cp_solver, 访问日期: 2026-06-19.
 
 ---
 
