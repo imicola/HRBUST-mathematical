@@ -2,6 +2,8 @@
 
 跨子问题复用的工具模块：
 
-- `data_loader.py`：统一的数据加载（读取 data/raw 的 xlsx）
-- `plotting.py`：科研级绘图样式（matplotlib/seaborn 统一风格）
-- `metrics.py`：评估指标（RMSE/MAE/R²/偏差量化）
+- `data_loader.py`：读取 `B-附件.xlsx`（工序流程表 / 班组配置表 / 车间距离表），解析为结构化数据；处理 C3-C5 循环展开、双设备协同解析、运输时间矩阵。
+- `instance.py`：定义调度实例（工序、设备、约束）的数据类，供各求解器统一消费。
+- `gantt.py`：甘特图绘制（matplotlib），支持按设备/按车间着色、标注工序编号与运输时间。
+- `metrics.py`：完工时长（makespan）、设备利用率、运输时间统计。
+- `io_table.py`：按题目表 1~表 5 格式输出结果（起止时间 HH:MM:SS、持续秒数）。
