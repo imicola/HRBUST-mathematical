@@ -1,0 +1,28 @@
+% 05_model.tex —— 模型建立与求解
+\section{模型建立与求解}
+% 每个 \subsection 对应一问，内部用 \subsubsection: 模型建立 / 求解与结果。
+% 数值结果来自 solve/code 的求解（baseline_v1 复审 + 最优性验证链），勿在此处改算法。
+
+\subsection{问题一：单班组单车间调度}
+\subsubsection{模型建立}
+% TODO: 决策变量、目标、约束（A 链）。
+\subsubsection{求解与结果}
+% TODO: makespan = 41600 s；附甘特图（figures/q1_gantt.pdf）。
+
+\subsection{问题二：单班组多车间调度}
+\subsubsection{模型建立}
+% TODO: 引入车间选择与跨车间运输时间。
+\subsubsection{求解与结果}
+% TODO: makespan = 163764 s（双瓶颈松弛下界已证最优）。
+
+\subsection{问题三：双班组多车间调度}
+\subsubsection{模型建立}
+% TODO: 双班组并行、运输/换型时间随上一作业车间变化。
+\subsubsection{求解与结果}
+% TODO: makespan = 123844 s。
+
+\subsection{问题四：预算约束下的设备购置优化}
+\subsubsection{模型建立}
+% TODO: 购置决策变量 + 调度联合模型（或两阶段）。
+\subsubsection{求解与结果}
+% TODO: makespan = 123844 s，最优购置费 = 0 元（CP-SAT 显式采购模型已证）。

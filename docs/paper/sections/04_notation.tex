@@ -1,0 +1,19 @@
+% 04_notation.tex —— 符号说明
+\section{符号说明}
+% 表格用 tabularx{\textwidth} 撑满版心宽，「含义」列用 X 自适应拉伸。
+\begin{table}[!htbp]
+  \centering
+  \caption{符号说明}%
+  \label{tab:notation}
+  \renewcommand{\arraystretch}{1.35}
+  \begin{tabularx}{\textwidth}{c X c}
+    \toprule
+    符号 & 含义 & 单位 \\
+    \midrule
+    $i$        & 工序编号                              & —   \\
+    $m$        & 设备类型编号                          & —   \\
+    $p_{im}$   & 工序 $i$ 在设备类型 $m$ 上的加工工时  & 秒  \\
+    % TODO: 补全全部符号
+    \bottomrule
+  \end{tabularx}
+\end{table}

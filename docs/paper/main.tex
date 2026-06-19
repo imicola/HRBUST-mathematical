@@ -1,0 +1,109 @@
+% !TEX program = xelatex
+%==============================================================================
+%  2026 五一数学建模竞赛（校赛模拟）B 题 —— 主文档
+%  模板：gmcmthesis.cls（vendored，未改动；源自 zhanwen/MathModel 2025 模版）
+%  引擎：xelatex + biber    构建：make   （或 latexmk -xelatex main.tex）
+%  规范：见同目录 TYPESPEC.md
+%==============================================================================
+\documentclass{gmcmthesis}
+
+\usepackage{amsmath}
+\usepackage{pdfpages}
+
+% ---- 参考文献：biblatex + GB/T 7714-2015（顺序编码制）----
+\usepackage[backend=biber, style=gb7714-2015, gbnamefmt=lowercase]{biblatex}
+\addbibresource{ref.bib}
+
+% ---- 图表按节编号（如 X-1）----
+\numberwithin{figure}{section}
+\numberwithin{table}{section}
+\renewcommand{\thefigure}{\arabic{section}-\arabic{figure}}
+\renewcommand{\thetable}{\arabic{section}-\arabic{table}}
+
+% ---- 页眉页脚（覆盖 cls 的 \pagestyle{plain}）----
+\usepackage{fancyhdr}
+\geometry{headheight=14pt}
+\renewcommand{\sectionmark}[1]{\markboth{#1}{}}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\zihao{-5}\leftmark}                            % 左：当前章节名
+\fancyhead[R]{\zihao{-5}五一数学建模竞赛（校赛模拟）· B 题}    % 右：赛题
+\fancyfoot[C]{\zihao{-5}-\ \thepage\ -}                        % 中：页码
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% ---- 论文元信息（团队填写）----
+\title{多工序协同作业调度优化模型}   % TODO: 最终标题
+\baominghao{No.00000000}             % TODO: 参赛队号
+\schoolname{XX 大学}                 % TODO: 学校名称
+\membera{队员一}                     % TODO
+\memberb{队员二}                     % TODO
+\memberc{队员三}                     % TODO
+
+%==============================================================================
+%  封面：本次无官方封面，采用「题目版式」封面（仿 cls 原生 \makenametitle：
+%  顶部竞赛名文字 + 「题　目」行 + 队员信息表，单页、无图片依赖）。
+%  跳过 cls 内置带「华为杯」logo 的前言页；拿到官方封面后在此替换。
+%==============================================================================
+\makeatletter
+\renewcommand{\maketitle}{%
+  \thispagestyle{empty}%
+  \vspace*{2.5cm}
+  \begin{center}
+    {\xinwei\zihao{2} 五一数学建模竞赛（校赛模拟）\par}
+    \vskip0.4cm
+    {\zihao{3}\heiti B\quad 题\par}
+    \vskip1.8cm
+    \begin{tabularx}{.95\textwidth}{@{}lX@{}}
+      {\zihao{4} 题\qquad 目} & \hfill\zihao{3}\heiti \@title \hfill\null \\
+      \cline{2-2}
+    \end{tabularx}
+  \end{center}
+  \vfill
+  \renewcommand{\arraystretch}{1.8}%
+  \noindent\begin{tabularx}{\textwidth}{lX}
+    {\zihao{4}\bfseries 参赛队号} & {\zihao{4} \gmcm@tokens@baominghao} \\
+    \cline{2-2}\\[-12pt]
+    {\zihao{4}\bfseries 学校名称} & {\zihao{4} \gmcm@tokens@schoolname} \\
+    \cline{2-2}\\[-12pt]
+    {\zihao{4}\bfseries 队员姓名} & {\zihao{4} 1.\;\gmcm@tokens@membera \quad 2.\;\gmcm@tokens@memberb \quad 3.\;\gmcm@tokens@memberc} \\
+    \cline{2-2}
+  \end{tabularx}
+  \vspace{2.5cm}
+  \newpage
+}
+\makeatother
+
+\begin{document}
+
+\maketitle
+
+%==============================================================================
+%  摘要（独立成页；标题「摘　要」由 cls 以隶书渲染）
+%  写作要点：方法 → 各问一句话说清思路与关键结果（含数字）→ 创新点。
+%  关键词 3–5 个，分号分隔，末尾无标点。
+%==============================================================================
+\begin{abstract}
+% TODO: 全文完成后最后写。结构建议：
+%  第一段：题目类型 + 核心方法 + 模型/算法创新点。
+%  第二~五段：问题一~四各一段，给出建模思路、求解算法与关键数值结果。
+%  末段（可选）：模型评价与推广。
+
+\keywords{多工序调度；混合整数规划；CP-SAT 精确求解；遗传算法；甘特图}
+\end{abstract}
+
+\tableofcontents
+
+\input{sections/01_restatement}    % 一、问题重述
+\input{sections/02_analysis}       % 二、问题分析
+\input{sections/03_assumptions}    % 三、模型假设
+\input{sections/04_notation}       % 四、符号说明
+\input{sections/05_model}          % 五、模型建立与求解（Q1–Q4）
+\input{sections/06_evaluation}     % 六、模型评价与推广
+
+\printbibliography                  % 七、参考文献
+
+\appendix
+\input{sections/07_appendix}       % 附录
+
+\end{document}
