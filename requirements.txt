@@ -11,10 +11,14 @@ ortools>=9.11            # Google OR-Tools CP-SAT，Q1 精确求解 + Q2~Q4 基�
 deap>=1.4                # 遗传算法框架，Q2~Q4 元启发式主力
 simanneal>=0.5           # 模拟退火，备选元启发式
 networkx>=3.3            # 车间距离图 / 运输路径建模
+scipy>=1.13              # scipy.optimize.milp (HiGHS)，baseline_v1 MILP 求解栈
 
 # ---- 可视化 ----
 matplotlib>=3.8          # 甘特图（自定义，按设备/车间着色）
 plotly>=5.24             # 交互式甘特图（可选）
+
+# ---- 文档生成（baseline_v1 报告复现）----
+python-docx>=1.1         # python-docx，baseline_v1/create_report.py 生成 docx 报告
 
 # ---- 工具 ----
 tqdm>=4.66               # 算法迭代进度

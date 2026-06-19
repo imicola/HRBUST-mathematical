@@ -1,0 +1,42 @@
+﻿车间,序号,工序编号,工序名称,工程量(m3),设备类型,效率(m3/h),持续时间(s),工序最短占用时间(s)
+A,1,A1,Defect Filling,300,精密灌装机,200,5400,5400
+A,1,A1,Defect Filling,300,自动化输送臂,250,4320,5400
+A,2,A2,Surface Leveling,500,高速抛光机,100,18000,18000
+A,2,A2,Surface Leveling,500,工业清洗机,250,7200,18000
+A,3,A3,Strength Testing,500,自动传感多功能机,100,18000,18000
+B,1,B1,Surface Cleaning,120,工业清洗机,100,4320,4320
+B,2,B2,Base Layer Construction,1500,精密灌装机,200,27000,27000
+B,2,B2,Base Layer Construction,1500,自动化输送臂,300,18000,27000
+B,3,B3,Surface Sealing,360,精密灌装机,350,3703,3703
+B,4,B4,Surface Leveling,360,高速抛光机,120,10800,12960
+B,4,B4,Surface Leveling,360,自动传感多功能机,100,12960,12960
+C,1,C1,Old Coating Removal,720,工业清洗机,250,10368,10368
+C,1,C1,Old Coating Removal,720,自动化输送臂,250,10368,10368
+C,2,C2,Base Filling,720,精密灌装机,350,7406,7406
+C,3,C3_R1,Sealing Coverage,360,精密灌装机,200,6480,6480
+C,3,C3_R1,Sealing Coverage,360,自动化输送臂,250,5184,6480
+C,4,C4_R1,Surface Grinding,400,高速抛光机,120,12000,14400
+C,4,C4_R1,Surface Grinding,400,工业清洗机,100,14400,14400
+C,5,C5_R1,Quality Inspection,400,自动传感多功能机,100,14400,14400
+C,6,C3_R2,Sealing Coverage,360,精密灌装机,200,6480,6480
+C,6,C3_R2,Sealing Coverage,360,自动化输送臂,250,5184,6480
+C,7,C4_R2,Surface Grinding,400,高速抛光机,120,12000,14400
+C,7,C4_R2,Surface Grinding,400,工业清洗机,100,14400,14400
+C,8,C5_R2,Quality Inspection,400,自动传感多功能机,100,14400,14400
+C,9,C3_R3,Sealing Coverage,360,精密灌装机,200,6480,6480
+C,9,C3_R3,Sealing Coverage,360,自动化输送臂,250,5184,6480
+C,10,C4_R3,Surface Grinding,400,高速抛光机,120,12000,14400
+C,10,C4_R3,Surface Grinding,400,工业清洗机,100,14400,14400
+C,11,C5_R3,Quality Inspection,400,自动传感多功能机,100,14400,14400
+D,1,D1,Debris Removal,600,工业清洗机,250,8640,8640
+D,2,D2,Base Solidification,800,精密灌装机,200,14400,14400
+D,2,D2,Base Solidification,800,自动化输送臂,300,9600,14400
+D,3,D3,Surface Sealing,450,精密灌装机,350,4629,4629
+D,4,D4,Surface Leveling,1500,高速抛光机,120,45000,45000
+D,4,D4,Surface Leveling,1500,自动传感多功能机,300,18000,45000
+D,5,D5,Load-bearing Inspection,1500,自动传感多功能机,300,18000,18000
+D,6,D6,Edge Trimming,700,高速抛光机,100,25200,25200
+E,1,E1,Foundation Treatment,1000,工业清洗机,250,14400,14400
+E,2,E2,Surface Sealing,600,精密灌装机,350,6172,6172
+E,3,E3,Stability Inspection,600,自动传感多功能机,300,7200,21600
+E,3,E3,Stability Inspection,600,工业清洗机,100,21600,21600

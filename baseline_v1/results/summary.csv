@@ -1,0 +1,5 @@
+﻿问题,最短时长(s),最短时长(HH:MM:SS),求解状态
+Q1,41600,11:33:20,Optimization terminated successfully. (HiGHS Status 7: Optimal)
+Q2,163764,45:29:24,Optimization terminated successfully. (HiGHS Status 7: Optimal)
+Q3,123844,34:24:04,Optimization terminated successfully. (HiGHS Status 7: Optimal)
+Q4,123844,34:24:04,关键路径下界已达到；最优采购为0
