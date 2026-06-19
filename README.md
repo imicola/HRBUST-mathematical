@@ -6,8 +6,8 @@
 ## 选题决策
 
 经 A/B/C 三题四维度评估 + **夺奖策略修正**（详见分析文档），**选定 B 题**：
-- 夺奖核心逻辑：**竞争密度 > 可行性**。B 题选的人比 C 题少，且有客观最优解（Makespan 可直接比较），区分度最高、最易靠硬实力突围。
-- 难度 9/10（NP-hard，但团队优化算法能力可覆盖），论文丰富度 8/10（甘特图 + 算法对比 + 敏感性分析）。
+- 夺奖核心逻辑：在可完成前提下优先选择**区分度更高**的题。B 题以 makespan、调度表、设备利用率和关键路径为核心产出，结果更便于比较，但必须保证约束完整和解质量可验证。
+- 难度 9/10（NP-hard，但题目实例规模有限，可用精确求解基准 + 启发式优化覆盖主要难点），论文丰富度 8/10（甘特图 + 算法对比 + 敏感性分析）。
 
 ## 项目结构
 
@@ -31,6 +31,13 @@ solve/
 │   ├── Q4_预算购置优化/          # Q4 50万预算+调度联合优化
 │   ├── common/                   # 公共工具（数据加载/实例/甘特图/指标/出表）
 │   └── solvers/                  # 求解器封装（CP-SAT / GA / SA / 解码器）
+├── baseline_v1/                  # 【v1 基线参考】初版分析报告（已复审）
+│   ├── code/model_solver.py      #   单体 MILP 求解脚本（scipy.optimize.milp / HiGHS）
+│   ├── code/create_report.py     #   报告生成脚本（python-docx）
+│   ├── data/                     #   结构化工序/设备/距离 CSV
+│   ├── docs/                     #   研究报告（md/docx/pdf）+ 文献调研
+│   ├── figures/                  #   Q1~Q4 甘特图 + 总时长对比图
+│   └── results/                  #   表1~表5 结果 CSV（可由脚本重新生成）
 ├── models/                       # 求解日志/参数（git 忽略大文件）
 └── results/                      # 表1~表5 结果输出（git 忽略中间产物）
 ```
@@ -40,8 +47,8 @@ solve/
 | 子问题 | 规模 | 推荐解法 | 关键库 |
 |:------|:-----|:--------|:-------|
 | Q1 单车间（班组1, A车间） | 3工序×5类设备 | OR-Tools CP-SAT 精确求解 | ortools |
-| Q2 多车间（班组1, 5车间） | 27工序×5车间+运输 | 遗传算法（MSOS编码） | deap |
-| Q3 双班组（班组1+2, 5车间） | 27工序+班组选择 | 扩展GA+局部搜索 | deap |
+| Q2 多车间（班组1, 5车间） | 展开后约27个工序实例+运输 | 遗传算法（MSOS编码） | deap |
+| Q3 双班组（班组1+2, 5车间） | 约27个工序实例+班组选择 | 扩展GA+局部搜索 | deap |
 | Q4 预算购置+调度 | 双层决策 | 外层枚举瓶颈设备+内层GA | ortools+deap |
 
 ## 题目关键约束备忘
@@ -68,6 +75,36 @@ uv pip install -r requirements.txt   # 或 pip install -r requirements.txt
 # 4. 运行某子问题代码
 python code/Q1_单车间调度/main.py
 ```
+
+## v1 基线参考（`baseline_v1/`）
+
+[`baseline_v1/`](baseline_v1/) 是首个初版分析报告的完整交付包，作为**一个解题方向参考**纳入项目。其内部保留原始扁平布局（`code/`+`data/`+`docs/`+`figures/`+`results/`），脚本相对路径未改动，可一键复现。
+
+> **已完成复审**：见 [`docs/analysis/baseline_v1复审与算法方向决策.md`](docs/analysis/baseline_v1复审与算法方向决策.md)。
+> **完整分析链**：见 [`docs/analysis/B题完整分析链与最优性验证.md`](docs/analysis/B题完整分析链与最优性验证.md)，已补 Q2 双瓶颈资源松弛下界与 Q4 显式采购 CP-SAT 验证。
+> 复审结论：v1 模型正确、结果可信（4.73s 全局最优复现），Q1/Q2/Q3/Q4 均已有下界或显式模型背书。**算法方向决策：以 v1 已证最优结果为答案底座，方法层 PORT 到 OR-Tools CP-SAT 作正式呈现+交叉验证，GA 降级为对比启发式。**
+
+- **方法**：混合整数线性规划（`scipy.optimize.milp` / HiGHS），Q1~Q3 求全局最优，Q4 由 C 车间关键路径下界证明最优采购为 0 台。
+- **核心结论**：Q1 = 41600s（11:33:20）、Q2 = 163764s（45:29:24）、Q3 = 123844s（34:24:04）、Q4 = 123844s（采购 0 台）。
+- **栈差异提醒**：v1 用 `scipy.milp`；本仓库主计划走 OR-Tools CP-SAT + DEAP（见上方策略表）。复现 v1 需 `scipy` + `python-docx`（已纳入 `requirements.txt`）。
+
+复现 v1：
+
+```bash
+source .venv/bin/activate
+cd baseline_v1
+python code/model_solver.py        # 重新生成 results/*.csv 并打印 Q1~Q4 最短时长
+python code/create_report.py       # 重新生成 docs/研究报告.{md,docx} 与 figures/
+```
+
+复现 Q2/Q4 独立验证：
+
+```bash
+source .venv/bin/activate
+python code/analysis/verify_optimality_chain.py
+```
+
+> 注：v1 的 `source/`（竞赛题目原文件）未入库——属版权材料，且数据已硬编码于 `model_solver.py`，复现无需原附件。
 
 ## 约定
 
